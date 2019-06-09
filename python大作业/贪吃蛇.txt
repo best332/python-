@@ -1,0 +1,252 @@
+import pygame
+import random
+import sys
+import os
+from tkinter import *
+mw=960
+mh=540
+size=20
+speed=3
+K_UP=273
+K_DOWN=274
+K_LEFT=276
+K_RIGHT=275
+K_w=119
+K_s=115
+K_a=97
+K_d=100
+K_ESCAPE=27
+def main():
+    pygame.init()
+    clock=pygame.time.Clock()
+    screen=pygame.display.set_mode((960,540))
+    screen.fill((255,255,255))
+    pygame.display.set_caption("snake")
+    start_page(screen)
+    while True:
+        run(screen,speed,clock)
+def start_page(screen):
+    screen.fill((0,0,0))
+    font = pygame.font.Font('Mouse.otf', 40)
+    tip=font.render('press any button to start',True,(255,255,0))
+    font = pygame.font.Font('Mouse.otf', 200)
+    name=font.render('snake',True,(255,0,0))
+    screen.blit(name,(200,100))
+    screen.blit(tip,(250,400))
+    pygame.display.update()
+    while True:
+        for event in pygame.event.get():
+            if event.type==pygame.QUIT:
+                terminate()
+            elif event.type==pygame.KEYDOWN:
+                if(event.key==K_ESCAPE):
+                    terminate()
+                else:
+                    return
+            elif event.type==pygame.MOUSEBUTTONDOWN:
+                return
+
+def terminate():
+    pygame.quit()
+    sys.exit(0)
+def run(screen,speed,clock):
+    start=randloc(2*size,2*size,mw-2*size,mh-2*size)
+    body=[{'x':start['x'],'y':start['y']},{'x':start['x']-size,'y':start['y']},{'x':start['x']-2*size,'y':start['y']}]
+    food=randloc(2*size,2*size,mw-2*size,mh-2*size)
+    direction=6
+    while True:
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN:
+                if (event.key == K_LEFT or event.key == K_a) and direction!=6:
+                    direction = 4
+                elif (event.key == K_RIGHT or event.key == K_d) and direction!=4:
+                    direction = 6
+                elif (event.key == K_UP or event.key == K_w) and direction!=2:
+                    direction = 8
+                elif (event.key == K_DOWN or event.key == K_s) and direction!=8:
+                    direction = 2
+                elif event.key == K_ESCAPE:
+                    terminate()
+        newbody={'x':body[0]['x']-size*(((direction%3+1)*2+1)%3-1),'y':body[0]['y']-size*(direction//4-1)}
+        body.insert(0,newbody)
+        if not livejudge(body):
+            break
+        eatfoodjudge(body,food)
+        draw(screen,body,food)
+        pygame.display.update()
+        clock.tick(((len(body)-3)//5+speed)*2)
+    died_page(screen,len(body)-4)
+def died_page(screen,score):
+    screen.fill((0,0,0))
+    font=pygame.font.Font('Mouse.otf',120)
+    tip=font.render('You died',True,(255,0,0))
+    screen.blit(tip,(225,200))
+    font=pygame.font.Font('Mouse.otf',40)
+    tip=font.render('score:'+repr(score),True,(255,0,0))
+    pygame.display.update()
+    while True:
+        name=''
+        for event in pygame.event.get():
+            if event.type==pygame.QUIT:
+                terminate()
+            elif event.type==pygame.KEYDOWN:
+                if(event.key==K_ESCAPE):
+                    terminate()
+                else:
+                    name=score_page(screen)
+                    break
+            elif event.type==pygame.MOUSEBUTTONDOWN:
+                name=score_page(screen)
+                break
+        if name!='':
+            break
+    add(screen,name,score)
+def add(screen,name,score):
+    infile=open('rank list.txt','r')
+    csvlist=[]
+    for line in infile:
+        data=line.rstrip().split(',')
+        if not data[1]=='score':
+            data[1]=int(data[1])
+        csvlist.insert(0,data)
+    newdata=[name,score]
+    csvlist=inse(screen,csvlist,newdata)
+    os.remove('rank list.txt')
+    outfile=open('rank list.txt','w')
+    for data in csvlist:
+        data[1]=data[1]
+        if data[1]=='score':
+            str=data[0]+','+data[1]+'\n'
+        else:
+            str=data[0]+','+repr(data[1])+'\n'
+        outfile.write(str)
+    outfile.close()
+    
+def inse(screen,csvlist,newdata):
+    x=-1
+    for data in csvlist[:-1]:
+        if data[1]>=newdata[1]:
+            x=csvlist.index(data)
+            break
+    csvlist.insert(x,newdata)
+    csvlist.reverse()
+    x=csvlist.index(newdata)
+    fin=x+3
+    st=x-3
+    if x-3<=0:
+        st=1
+    if x+3>=len(csvlist):
+        fin=len(csvlist)
+    newlist=csvlist[st:fin]
+    newlist.insert(0,csvlist[0])
+    font=pygame.font.Font('Mouse.otf',40)
+    x1=200
+    x2=400
+    y=100
+    screen.fill((0,0,0))
+    for data in newlist:
+        if data==newdata:
+            color=(0,255,0)
+        else:
+            color=(255,0,0)
+        text=font.render(data[0],True,color)
+        screen.blit(text,(x1,y))
+        if not data[1]=='score':
+            text=font.render(repr(csvlist.index(data)),True,color)
+            screen.blit(text,(x1-50,y))
+        if data[1]=='score':
+            text=font.render(data[1],True,color)
+        else:
+            text=font.render(repr(data[1]),True,color)
+        screen.blit(text,(x2,y))
+        y=y+50
+    pygame.display.update()
+    while True:        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN:
+                if event.key==K_ESCAPE:
+                    terminate()
+                else:
+                    return csvlist
+
+
+
+def score_page(screen):
+    screen.fill((0,0,0))
+    pygame.draw.rect(screen,(64,64,64),pygame.Rect(280,240,400,60))
+    name=''
+    pygame.display.update()
+    font=pygame.font.Font('Mouse.otf',60)
+    while True:
+        for event in pygame.event.get():
+            if event.type==pygame.KEYDOWN:
+                if event.key==13:
+                    return name
+                elif event.key==8:
+                    name=name[0:-1]
+                    pygame.draw.rect(screen,(64,64,64),pygame.Rect(280,240,400,60))
+                else:
+                    name=name+event.unicode
+            tip=font.render(name,True,(255,255,255))
+            screen.blit(tip,(280,240))
+            pygame.display.update()
+    pygame.display.update()
+def rank_page(screen,score):
+    screen.fill((0,0,0))
+    font=pygame.font.Font('Mouse.otf',32)
+    tip=font.render('rank list',True,(255,0,0))
+    screen.blit(tip,(400,50))
+    pygame.display.update()
+
+def livejudge(body):
+    if body[0]['x']<size or body[0]['x']>mw-2*size or body[0]['y']<size or body[0]['y']>mh-2*size:
+        return False
+    if body[0] in body[1:]: 
+        return False
+    return True
+def eatfoodjudge(body,food):
+    if body[0]['x']==food['x'] and body[0]['y']==food['y']:
+        newfood=randloc(2*size,2*size,mw-2*size,mh-2*size)
+        while not insnake(body,newfood):
+            newfood=randloc(2*size,2*size,mw-2*size,mh-2*size)
+        food['x']=newfood['x']
+        food['y']=newfood['y']
+    else:
+        del body[-1]
+def insnake(body,object):
+    for ob in body:
+        if ob['x']==object['x'] and ob['y']==object['y']:
+            return False
+    return True
+def randloc(wst,hst,wfin,hfin):
+    return {'x':random.randint(wst//size,wfin//size)*size,'y':random.randint(hst//size,hfin//size)*size}
+def draw(screen,body,food):
+    screen.fill((0,0,0))
+    text='scroe:'+repr(len(body)-3)
+    font = pygame.font.Font('Mouse.otf', 20)
+    tip=font.render(text,True,(255,255,0))
+    screen.blit(tip,(size,size))
+    for x in range(0,mw,size):
+        pygame.draw.rect(screen,(160,82,45),pygame.Rect(x,0,size-2,size-2))
+    for x in range(0,mw,size):
+        pygame.draw.rect(screen,(160,82,45),pygame.Rect(x,mh-size,size-2,size-2))
+    for y in range(0,mh,size):
+        pygame.draw.rect(screen,(160,82,45),pygame.Rect(0,y,size-2,size-2))
+    for y in range(0,mh,size):
+        pygame.draw.rect(screen,(160,82,45),pygame.Rect(mw-size,y,size-2,size-2))
+    tag=1
+    for part in body:
+        pygame.draw.rect(screen,(255,0,0),pygame.Rect(part['x']+1,part['y']+1,size-2,size-2))
+    pygame.draw.circle(screen,(0,255,0),(food['x']+size//2,food['y']+size//2),size//2,0)
+
+
+
+
+main()
+        
+
